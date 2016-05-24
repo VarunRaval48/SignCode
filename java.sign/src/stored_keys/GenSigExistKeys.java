@@ -18,8 +18,8 @@ import java.security.cert.CertificateException;
 public class GenSigExistKeys {
 
 	//TODO Enter valid pass here
-	private static final String keyStorePass="9va9r9un123";		//password of keystore
-	private static final String privateKeyPass="9va9r9un123";		//password of privatekey
+	private static final String keyStorePass="";		//password of keystore
+	private static final String privateKeyPass="";		//password of privatekey
 
 	public static void main(String args[]){
 
