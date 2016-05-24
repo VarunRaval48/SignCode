@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -19,10 +20,11 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.Base64;
 
 public class GetSigExistingKeys {
 
-	
 	/*
 	 * sign file with existing key in keystore with given alias
 	 * and store sign in signedFile
@@ -33,126 +35,97 @@ public class GetSigExistingKeys {
 	 * 			alias with which key is to be signed
 	 * @param dataFile
 	 * 			file which needs to be signed
-	 * @param signFile
-	 * 			file where signed content is stored
 	 * 
 	 * @throws UnrecoverableKeyException 
 	 * @throws KeyStoreException
 	 * @throws NoSuchAlgorithmException
 	 * @throws NoSuchProviderException
 	 * @throws InvalidKeyException
-	 * @throws IOException
 	 * @throws SignatureException
+	 * 
+	 * @return byte[]
+	 * 			signed signature in byte format or null if file is not readable
+	 * 
 	 */
-	void sigUsingExistKeys(KeyStore keyStore, String alias, String pass, String dataFile, String signFile) 
+	byte[] sigUsingExistKeys(KeyStore keyStore, String alias, String pass, String dataFile, String signFile) 
 			throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, 
-				NoSuchProviderException, InvalidKeyException, IOException, SignatureException{
-		
+				NoSuchProviderException, InvalidKeyException, SignatureException{
+
+		byte buffer[] = new byte[1024];
+		int len;
+
 		System.out.println("Alias exists :"+keyStore.isKeyEntry("Varun Raval"));
-		
+
 		Key key = keyStore.getKey(alias, pass.toCharArray());
-		
+
 		Signature signature = Signature.getInstance("SHA1withDSA", "SUN");
-		
+
 		signature.initSign((PrivateKey)key);
 
-		FileInputStream file_input = new FileInputStream(dataFile);
-		BufferedInputStream bf = new BufferedInputStream(file_input);
-		
-		byte buffer[] = new byte[1024];
-		int len;
-		
-		while((len=bf.read(buffer)) >= 0){
-			signature.update(buffer, 0, len);
+		try(BufferedInputStream bf = new BufferedInputStream(new FileInputStream(dataFile))){	
+			while((len=bf.read(buffer)) >= 0){
+				signature.update(buffer, 0, len);
+			}
+			bf.close();
+		} catch(IOException e){
+			e.printStackTrace();
+			return null;
 		}
-		
-		bf.close();
-		
-		byte realsig[] = signature.sign();
-		
-		FileOutputStream fout = new FileOutputStream(signFile);
-		BufferedOutputStream bout = new BufferedOutputStream(fout);
-		
-		bout.write(realsig);
-		
-		bout.close();
 
-	}
-	
+		byte realsig[] = signature.sign();
+
+		return realsig;
+	}	
+
 	/*
-	 * sign file with existing key in keystore with given alias
-	 * and store sign in signedFile
+	 * @param byte[]
+	 * 			byte[] to be converted to string of Base64 format
 	 * 
-	 * @param keyStore
-	 * 			keyStore of the keys
-	 * @param pathToCert
-	 * 			path of the public key certificate
+	 * @return String
+	 * 			final String in Base64 format
+	 */	
+	String convertBytesToBase64(byte[] sig){
+		
+		Base64.Encoder b = Base64.getEncoder();
+		return b.encodeToString(sig);
+	}
+
+	/*
 	 * @param signFile
 	 * 			file where signed content is stored
-	 * @param dataFile
-	 * 			file which needs to be signed
-	 * 
-	 * @throws KeyStoreException
-	 * @throws NoSuchAlgorithmException
-	 * @throws NoSuchProviderException
-	 * @throws InvalidKeyException
-	 * @throws IOException
-	 * @throws SignatureException
-	 * @throws CertificateException
+	 *
+	 * @return true 
+	 * 			this returns result of write operation whether successful or not
 	 */
-	void verUsingExistKeys(KeyStore keyStore, String pathToCert, String signedFile, String dataFile) 
-			throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, NoSuchProviderException, 
-				InvalidKeyException, SignatureException{
-		
-		BufferedInputStream buf_in = new BufferedInputStream(new FileInputStream(pathToCert));
-		BufferedOutputStream buf_out = new BufferedOutputStream(new FileOutputStream("/home/varun/Documents/Example.txt"));
-		
-		CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-		
-		int len;
-		byte buffer[] = new byte[1024];
-		
-		while(buf_in.available() > 0){
-			Certificate cert = certificateFactory.generateCertificate(buf_in);
-			keyStore.setCertificateEntry("Example", cert);
+	boolean storeSignUsingExistKeys(byte sig[], String signFile){
+
+		try( BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(signFile))){
+			bout.write(sig);
+			return true;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
 		}
-		
-		buf_in.close();
-		buf_out.close();
-	
-		System.out.println("Imported in keystore");
-		
-		System.out.println("Certificate Exists: "+keyStore.isCertificateEntry("Example"));
-		
-		Certificate certificate = keyStore.getCertificate("Example");
-		System.out.println(certificate.toString());
-		System.out.println("Certificate Type: "+certificate.getType());
-				
-		PublicKey publicKey = keyStore.getCertificate("Example").getPublicKey();
-		
-		Signature signature = Signature.getInstance("SHA1withDSA", "SUN");
-		signature.initVerify(publicKey);
-		
-		FileInputStream fin_sgn = new FileInputStream(signedFile);
-		byte realsgn[] = new byte[fin_sgn.available()];
-		
-		fin_sgn.read(realsgn);
-		
-		FileInputStream fin_data = new FileInputStream(dataFile);
-		BufferedInputStream buf_data_in = new BufferedInputStream(fin_data);
-		
-		buffer = new byte[1024];
-		while(buf_data_in.available()>0){
-			
-			len = buf_data_in.read(buffer);
-			signature.update(buffer, 0, len);
+	}
+
+	/*
+	 * @param sig
+	 * 			string in base64 encoding to store in file
+	 * 
+	 * @param signFile
+	 * 			file where signed content is stored
+	 *
+	 * @return true 
+	 * 			this returns result of write operation whether successful or not
+	 */
+	boolean storeSignUsingExistKeys(String sig, String signFile){
+
+		try(FileWriter fw = new FileWriter(signFile)){
+			fw.write(sig);
+			return true;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
 		}
-		
-		boolean verified = signature.verify(realsgn);
-		
-		System.out.println("File verified: "+verified);
-		
-		fin_sgn.close();
-		buf_data_in.close();
 	}
 }
