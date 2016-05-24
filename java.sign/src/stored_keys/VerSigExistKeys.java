@@ -10,6 +10,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 
 
@@ -20,39 +21,42 @@ public class VerSigExistKeys {
 	private static final String keyStorePass="";		//password of keystore
 
 	public static void main(String args[]){
-		
+
 		String pathToCertificate = "/home/varun/Documents/Example.cer";
-		String pathToKeyStore = "/home/varun/keystore";
-		String signedFile = "/home/varun/Documents/TODO_sign_exist_1.sgn";
-		String dataFile = "/home/varun/Documents/TODO";
-		try {
-		
-			KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());			
-			
-			FileInputStream fileInputStream = new FileInputStream(new File(pathToKeyStore));
-			
-			keyStore.load(fileInputStream, keyStorePass.toCharArray());
-		
-			GetSigExistingKeys gsek = new GetSigExistingKeys();
-						
-			gsek.verUsingExistKeys(keyStore, pathToCertificate, signedFile, dataFile);
-			
-		} catch (KeyStoreException e) {
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (CertificateException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			e.printStackTrace();
-		} catch (NoSuchProviderException e) {
-			e.printStackTrace();
-		} catch (SignatureException e) {
-			e.printStackTrace();
-		}		
+		String pathToKeyStore = "/home/varun/keystore",
+				signFile="/home/varun/Documents/projects/GSoC/T1_testData/signed_files/hello_sign_exist.sgn",
+				signStrFile="/home/varun/Documents/projects/GSoC/T1_testData/signed_files/hello_sign_exist_str.js",
+				dataFile="/home/varun/Documents/projects/GSoC/T1_testData/files/hello.js";
+
+//		try {
+
+//			KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());			
+//
+//			FileInputStream fileInputStream = new FileInputStream(new File(pathToKeyStore));
+//
+//			keyStore.load(fileInputStream, keyStorePass.toCharArray());
+
+			GetVerExistingKeys gver = new GetVerExistingKeys();
+
+//			gver.verUsingExistKeys(keyStore, pathToCertificate, signedFile, dataFile);
+
+			Certificate certificate = gver.importCertFromFile(pathToCertificate);
+			String sigStr = gver.getSignatureFromStringFile(signStrFile);
+			byte[] sig = gver.convertBase64ToByte(sigStr);
+			boolean verify = gver.verSignature(sig, dataFile, certificate);
+			System.out.println("File Verified: "+verify);
+//		}
+//		catch (KeyStoreException e) {
+//			e.printStackTrace();
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		} catch (NoSuchAlgorithmException e) {
+//			e.printStackTrace();
+//		} catch (CertificateException e) {
+//			e.printStackTrace();
+//		}
+//		catch (IOException e) {
+//			e.printStackTrace();
+//		}		
 	}
 }
