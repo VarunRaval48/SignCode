@@ -21,7 +21,7 @@ public class CertToFromByte {
 	public static void main(String args[]){
 
 		String pathToKeyStore = "/home/varun/keystore",
-				keyStorePass = "9va9r9un123",
+				keyStorePass = "",
 				alias = "Varun Raval",
 				file = "/home/varun/Documents/projects/GSoC/T1_testData/cert_test/testBase64";
 
