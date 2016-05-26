@@ -14,25 +14,36 @@ import java.security.cert.CertificateFactory;
 public class CertVal {
 
 	Certificate cert;
+	BufferedInputStream buf_in;
+	String type;
 	
 	public CertVal(String cert, String type) throws IOException, CertificateException{
 		
-		BufferedInputStream buf_in = new BufferedInputStream(new ByteArrayInputStream(cert.getBytes()));
-		getCert(buf_in, type);
+		buf_in = new BufferedInputStream(new ByteArrayInputStream(cert.getBytes()));
+		this.type = type;
 	}
 	
 	public CertVal(File cert, String type) throws FileNotFoundException, IOException, CertificateException{
-		BufferedInputStream buf_in = new BufferedInputStream(new FileInputStream(cert));
-		getCert(buf_in, type);
+
+		buf_in = new BufferedInputStream(new FileInputStream(cert));
+		this.type = type;
+	}
+
+	public CertVal(byte[] cert, String type){
+
+		buf_in = new BufferedInputStream(new ByteArrayInputStream(cert));
+		this.type = type;
 	}
 	
-	private void getCert(BufferedInputStream buf_in, String type) throws IOException, CertificateException{
+	public Certificate getCert() throws IOException, CertificateException{
 		
 		CertificateFactory certificateFactory = CertificateFactory.getInstance(type);		//X.509
 		
 		while(buf_in.available()>0){
 			cert = certificateFactory.generateCertificate(buf_in);
 		}
+		
+		return cert;
 	}
 	
 	//verify, isrootsigned, import to keystore, export from keystore, check validity
