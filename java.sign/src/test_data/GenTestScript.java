@@ -28,9 +28,9 @@ public class GenTestScript {
 		String dataFile = "/home/varun/Documents/projects/GSoC/T1_testData/files/hello.js", 
 				signFile = "/home/varun/Documents/projects/GSoC/T1_testData/signed_files/hello.js",
 				pathToKeyStore = "/home/varun/keystore",
-				keyStorePass = "",
+				keyStorePass = "9va9r9un123",
 				alias = "Varun Raval",
-				privateKeyPass = "";
+				privateKeyPass = "9va9r9un123";
 
 		Certificate certificate = null;
 		
@@ -82,7 +82,15 @@ public class GenTestScript {
 			brW.append("/********BEGIN SIGNATURE********\n");
 			brW.append(strSig);
 			brW.append("\n\n");
-			brW.append(strCert);
+			
+			int i = 0;
+			for(String s: strCert.split("")){
+				brW.append(s);
+				i++;
+				if(i%48 == 0)
+					brW.append('\n');
+			}
+			
 			brW.append("\n********END SIGNATURE********/");
 
 		} catch (FileNotFoundException e) {
