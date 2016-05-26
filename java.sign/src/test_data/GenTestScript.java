@@ -82,7 +82,15 @@ public class GenTestScript {
 			brW.append("/********BEGIN SIGNATURE********\n");
 			brW.append(strSig);
 			brW.append("\n\n");
-			brW.append(strCert);
+			
+			int i = 0;
+			for(String s: strCert.split("")){
+				brW.append(s);
+				i++;
+				if(i%48 == 0)
+					brW.append('\n');
+			}
+			
 			brW.append("\n********END SIGNATURE********/");
 
 		} catch (FileNotFoundException e) {
