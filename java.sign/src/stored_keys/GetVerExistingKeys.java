@@ -3,11 +3,14 @@ package stored_keys;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringBufferInputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -44,7 +47,7 @@ public class GetVerExistingKeys {
 	 * @throws SignatureException
 	 * @throws CertificateException
 	 */
-	void verUsingExistKeys(KeyStore keyStore, String pathToCert, String signedFile, String dataFile) 
+	void verUsingExistKeys(KeyStore keyStore, String pathToCert, byte realsgn[], String dataFile) 
 			throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, NoSuchProviderException, 
 				InvalidKeyException, SignatureException{
 
@@ -78,17 +81,12 @@ public class GetVerExistingKeys {
 		Signature signature = Signature.getInstance("SHA1withDSA", "SUN");
 		signature.initVerify(publicKey);
 
-		FileInputStream fin_sgn = new FileInputStream(signedFile);
-		byte realsgn[] = new byte[fin_sgn.available()];
-		
-		fin_sgn.read(realsgn);
-		
 		FileInputStream fin_data = new FileInputStream(dataFile);
 		BufferedInputStream buf_data_in = new BufferedInputStream(fin_data);
-		
+
 		buffer = new byte[1024];
 		while(buf_data_in.available()>0){
-			
+
 			len = buf_data_in.read(buffer);
 			signature.update(buffer, 0, len);
 		}
@@ -97,38 +95,48 @@ public class GetVerExistingKeys {
 		
 		System.out.println("File verified: "+verified);
 		
-		fin_sgn.close();
 		buf_data_in.close();
 	}
+		
+
+	public boolean verSignature(byte[] sign, File dataFile, Certificate cert) throws FileNotFoundException{
+
+		return verSignature(sign, new BufferedInputStream(new FileInputStream(dataFile)), cert);
+	}
 	
-	boolean verSignature(byte[] sign, String dataFile, Certificate cert){
+	public boolean verSignature(byte[] sign, String content, Certificate cert){
+
+		return verSignature(sign, new BufferedInputStream(new ByteArrayInputStream(content.getBytes())), cert);
+	}
+	
+	public boolean verSignature(byte[] sign, BufferedInputStream buf_data_in, Certificate cert){
 		
 		byte[] buffer;
 		int len;
 		boolean verified = false;
 		
-		try(BufferedInputStream buf_data_in = new BufferedInputStream(new FileInputStream(dataFile))){
+		try{
 
 			Signature signature = Signature.getInstance("SHA1withDSA", "SUN");
 	
 			PublicKey publicKey = cert.getPublicKey();
 			
 			signature.initVerify(publicKey);
-		
-		
+
 			buffer = new byte[1024];
 			while(buf_data_in.available()>0){
-				
+
 				len = buf_data_in.read(buffer);
 				signature.update(buffer, 0, len);
 			}
-			
+
 			verified = signature.verify(sign);
-			
+
 //			System.out.println("File verified: "+verified);
-			
+
+			buf_data_in.close();
 			return verified;
-			
+
 		} catch (SignatureException | NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException e) {
 			e.printStackTrace();
 			return false;
@@ -138,7 +146,7 @@ public class GetVerExistingKeys {
 		}
 	}
 	
-	Certificate importCertFromFile(String pathToCert){
+	public Certificate importCertFromFile(String pathToCert){
 		
 		Certificate cert = null;
 		
@@ -201,7 +209,7 @@ public class GetVerExistingKeys {
 		}
 	}
 
-	byte[] convertBase64ToByte(String str){
+	public byte[] convertBase64ToByte(String str){
 
 		Base64.Decoder decode = Base64.getDecoder();
 		return decode.decode(str);
