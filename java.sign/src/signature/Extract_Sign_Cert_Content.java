@@ -20,7 +20,7 @@ public class Extract_Sign_Cert_Content {
 	public Extract_Sign_Cert_Content(String file, String f_type) throws IOException{
 
 		br = new BufferedReader(new FileReader(file));
-		br.mark(0);
+//		br.mark(0);
 		
 		content = null;
 
@@ -58,7 +58,7 @@ public class Extract_Sign_Cert_Content {
 		System.out.println(c.toString());
 	}
 
-	Certificate getCert(){
+	public Certificate getCert(){
 
 		try{
 			br.readLine();
@@ -89,7 +89,7 @@ public class Extract_Sign_Cert_Content {
 		}
 	}
 
-	String getSign(){
+	public String getSign(){
 
 		StringBuffer sb = new StringBuffer();
 		String temp, prev="";
@@ -115,7 +115,7 @@ public class Extract_Sign_Cert_Content {
 		}
 	}
 
-	String getContent(){
+	public String getContent(){
 
 		if(content!=null){
 			System.out.println(content);
@@ -126,7 +126,7 @@ public class Extract_Sign_Cert_Content {
 		String temp, prev="";
 
 		try {
-			br.reset();
+//			br.reset();
 
 			if(br.ready() && !(temp=br.readLine()).equals(begin))
 				sb.append(temp);			
