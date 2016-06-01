@@ -25,12 +25,17 @@ public class GenTestScript {
 	
 	public static void main(String args[]){
 		
-		String dataFile = "/home/varun/Documents/projects/GSoC/T1_testData/files/hello.js", 
-				signFile = "/home/varun/Documents/projects/GSoC/T1_testData/signed_files/hello.js",
+		String  f_name = "03 XML handling.js",
+				language = "javascript",
+				type = "Valid",
+				dataFile = "/home/varun/Documents/projects/GSoC/T1_testData/files/"+f_name, 
+				signFile = "TestScripts/"+type+"/"+language+"/"+f_name,
 				pathToKeyStore = "/home/varun/keystore",
 				keyStorePass = "",
 				alias = "Varun Raval",
-				privateKeyPass = "";
+				privateKeyPass = "",
+				begin = "/********BEGIN SIGNATURE********\n",
+				end = "\n********END SIGNATURE********/";
 
 		Certificate certificate = null;
 		
@@ -78,8 +83,23 @@ public class GenTestScript {
 			br.close();
 
 			brW.append("\n\n");
+
+			String ext = (String)signFile.subSequence(signFile.lastIndexOf(".")+1, signFile.length());
+			System.out.println(ext);
+
+			switch(ext){
+		
+			case "js":
+				break;
+		
+			case "py":
+				begin = "\"\"\"*****BEGIN SIGNSTURE********\n";
+				end = "\n********END SIGNSTURE*****\"\"\"";
+				break;
+			}
+				
 			
-			brW.append("/********BEGIN SIGNATURE********\n");
+			brW.append(begin);
 			brW.append(strSig);
 			brW.append("\n\n");
 			
@@ -91,7 +111,7 @@ public class GenTestScript {
 					brW.append('\n');
 			}
 			
-			brW.append("\n********END SIGNATURE********/");
+			brW.append(end);
 
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
