@@ -12,24 +12,55 @@ import java.security.cert.CertificateException;
 import stored_keys.LoadKeystore;
 import testing.CertToFromByte;
 
-public class ExtractCertFromScript {
+public class Extract_Sign_Cert_Content {
 
-	public static void main(String args[]){
+	private String begin, stop, content;
+	private BufferedReader br;
+
+	public Extract_Sign_Cert_Content(String file, String f_type) throws IOException{
+
+		br = new BufferedReader(new FileReader(file));
+		br.mark(0);
 		
+		content = null;
+
+		begin = "/********BEGIN SIGNATURE********";
+		
+		String ext = (String)file.subSequence(file.lastIndexOf(".")+1, file.length());
+		System.out.println(ext);
+
+		switch(ext){
+
+		case "js":
+			break;
+
+		case "py":
+			begin = "\"\"\"*****BEGIN SIGNSTURE********";
+			break;
+		}
+
+		stop = "";
+	}
+
+	public static void main(String args[]) throws IOException{
+
 		String file = "/home/varun/Documents/projects/GSoC/T1_testData/signed_files/hello.js";
-		Certificate c = new ExtractCertFromScript().getCert(file);
+
+		Extract_Sign_Cert_Content extr = new Extract_Sign_Cert_Content(file, "js");
+
+		String sign = extr.getSign();
+		Certificate c = extr.getCert();
+		extr.getContent();
+
+		System.out.println();
+		System.out.println(sign);
+		System.out.println();
 		System.out.println(c.toString());
 	}
-	
-	Certificate getCert(String file){
 
-		String start = "/********BEGIN SIGNATURE********";
-		String stop = "";
-		try(BufferedReader br = new BufferedReader(new FileReader(file))){
-			
-			while(br.ready() && !br.readLine().equals(start));
+	Certificate getCert(){
 
-			br.readLine();
+		try{
 			br.readLine();
 
 			String str;
@@ -41,22 +72,79 @@ public class ExtractCertFromScript {
 
 			str = strB.toString();
 
-			System.out.println(str);
+//			System.out.println(str);
 
 			byte[] certB = CertToFromByte.convertBase64ToBytes(str);
-			
+
 			CertVal certVal = new CertVal(certB, "X.509");
 			return certVal.getCert();
+		} catch(IOException e){
 
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return null;
-		} catch (IOException e) {
 			e.printStackTrace();
 			return null;
 		} catch (CertificateException e) {
+
 			e.printStackTrace();
 			return null;
 		}
+	}
+
+	String getSign(){
+
+		StringBuffer sb = new StringBuffer();
+		String temp, prev="";
+		try{
+			if(br.ready() && !(temp=br.readLine()).equals(begin))
+				sb.append(temp);
+//				prev = temp;
+			
+			if(br.ready() && !(temp=br.readLine()).equals(begin))
+				prev = temp;
+			while(br.ready() && !(temp=br.readLine()).equals(begin)){
+//				sb.append("\n"+temp);
+				sb.append("\n"+prev);
+				prev = temp;
+			}
+			content = sb.toString();
+
+			return br.readLine();
+		} catch(IOException e){
+			e.printStackTrace();
+			System.out.println("Signature format Improper");
+			return null;
+		}
+	}
+
+	String getContent(){
+
+		if(content!=null){
+			System.out.println(content);
+			return content;
+		}
+
+		StringBuffer sb = new StringBuffer();
+		String temp, prev="";
+
+		try {
+			br.reset();
+
+			if(br.ready() && !(temp=br.readLine()).equals(begin))
+				sb.append(temp);			
+
+			if(br.ready() && !(temp=br.readLine()).equals(begin))
+				prev = temp;			
+			while(br.ready() && !(temp=br.readLine()).equals(begin)){
+//				sb.append("\n"+temp);
+				sb.append("\n"+prev);
+				prev = temp;
+			}
+			content = sb.toString();
+
+			System.out.println(content);
+			return content;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}		
 	}
 }
