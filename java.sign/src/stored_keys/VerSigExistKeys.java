@@ -13,14 +13,13 @@ import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 
-
 //This class is an implementation to show usage of GetSigExistingKeys class's verUsingExistKeys method
 public class VerSigExistKeys {
 	
 	//TODO Enter valid pass here
 	private static final String keyStorePass="";		//password of keystore
 
-	public static void main(String args[]){
+	public static void main(String args[]) throws FileNotFoundException{
 
 		String pathToCertificate = "/home/varun/Documents/Example.cer";
 		String pathToKeyStore = "/home/varun/keystore",
@@ -43,7 +42,8 @@ public class VerSigExistKeys {
 			Certificate certificate = gver.importCertFromFile(pathToCertificate);
 			String sigStr = gver.getSignatureFromStringFile(signStrFile);
 			byte[] sig = gver.convertBase64ToByte(sigStr);
-			boolean verify = gver.verSignature(sig, dataFile, certificate);
+			
+			boolean verify = gver.verSignature(sig, new File(dataFile), certificate);
 			System.out.println("File Verified: "+verify);
 //		}
 //		catch (KeyStoreException e) {
