@@ -107,6 +107,10 @@ public class Extract_Sign_Cert_Content {
 			}
 			content = sb.toString();
 
+			//Checks if empty line before signature is modified or not
+			if(!prev.equals(""))
+				throw new IOException();
+
 			return br.readLine();
 		} catch(IOException e){
 			e.printStackTrace();
