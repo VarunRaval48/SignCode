@@ -14,7 +14,7 @@ import testing.CertToFromByte;
 
 public class Extract_Sign_Cert_Content {
 
-	private String begin, stop, content;
+	private String begin, end, stop, content;
 	private BufferedReader br;
 
 	public Extract_Sign_Cert_Content(String file, String f_type) throws IOException{
@@ -25,6 +25,7 @@ public class Extract_Sign_Cert_Content {
 		content = null;
 
 		begin = "/********BEGIN SIGNATURE********";
+		end = "********END SIGNATURE********/";
 		
 		String ext = (String)file.subSequence(file.lastIndexOf(".")+1, file.length());
 		System.out.println(ext);
@@ -36,6 +37,7 @@ public class Extract_Sign_Cert_Content {
 
 		case "py":
 			begin = "\"\"\"*****BEGIN SIGNSTURE********";
+			end = "********BEGIN SIGNSTURE*****\"\"\"";
 			break;
 		}
 
@@ -77,9 +79,16 @@ public class Extract_Sign_Cert_Content {
 			byte[] certB = CertToFromByte.convertBase64ToBytes(str);
 
 			CertVal certVal = new CertVal(certB, "X.509");
+
+			if(!br.readLine().equals(end) || br.ready()){
+				throw new IOException();
+			}
+
+			br.close();
 			return certVal.getCert();
 		} catch(IOException e){
 
+			System.out.println("Signature block format improper");
 			e.printStackTrace();
 			return null;
 		} catch (CertificateException e) {
@@ -145,6 +154,8 @@ public class Extract_Sign_Cert_Content {
 			content = sb.toString();
 
 			System.out.println(content);
+			
+			br.close();
 			return content;
 		} catch (IOException e) {
 			e.printStackTrace();
