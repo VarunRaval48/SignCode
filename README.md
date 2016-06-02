@@ -3,7 +3,7 @@ Java Files to sign code using keys in java keystore
 
 ###Sign File
 Methods to sign file are available in [src/stored_keys/GetSigExistingKeys.java](https://github.com/VarunRaval48/SignCode/blob/master/java.sign/src/stored_keys/GetSigExistingKeys.java).
-Implementation of these methods is available at [src/stored_keys/GenSigExistingKeys.java](https://github.com/VarunRaval48/SignCode/blob/master/java.sign/src/stored_keys/GenSigExistingKeys.java).
+Implementation of these methods is available at [src/stored_keys/GenSigExistKeys.java](https://github.com/VarunRaval48/SignCode/blob/master/java.sign/src/stored_keys/GenSigExistKeys.java).
 
 ###Verify Signature
 Methods to verify signature of a filea are available at [src/stored_keys/GetVerExistingKeys.java](https://github.com/VarunRaval48/SignCode/blob/master/java.sign/src/stored_keys/GetVerExistingKeys.java).
