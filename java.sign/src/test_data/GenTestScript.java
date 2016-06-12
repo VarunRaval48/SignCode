@@ -19,13 +19,13 @@ import java.security.cert.CertificateEncodingException;
 import signature.CertImport;
 import stored_keys.GetSigExistingKeys;
 import stored_keys.LoadKeystore;
+import testing.CertToFromByte;
 
 public class GenTestScript {
-
 	
 	public static void main(String args[]){
 		
-		String  f_name = "03 XML handling.js",
+		String  f_name = "hello.js",
 				language = "javascript",
 				type = "Valid",
 				dataFile = "/home/varun/Documents/projects/GSoC/T1_testData/files/"+f_name, 
@@ -34,24 +34,24 @@ public class GenTestScript {
 				keyStorePass = "",
 				alias = "Varun Raval",
 				privateKeyPass = "",
-				begin = "/********BEGIN SIGNATURE********\n",
-				end = "\n********END SIGNATURE********/";
+				begin = "/********BEGIN SIGNATURE********",
+				end = "\n********END SIGNATURE********/\n";
 
 		Certificate certificate = null;
-		
+
 		GetSigExistingKeys gsek = new GetSigExistingKeys();
 
 		KeyStore keyStore = LoadKeystore.load(pathToKeyStore, keyStorePass);
-		
+
 		//perform signature and get Certificate in Certificate object from keystore
 		byte[] realsig = null;
 		try {
-		
+
 			realsig = gsek.sigUsingExistKeys(keyStore, alias, privateKeyPass, dataFile, signFile);
 
 			CertImport certImport = new CertImport(keyStore);			
 			certificate = certImport.importCert(alias);
-			
+
 		} catch (UnrecoverableKeyException | InvalidKeyException | KeyStoreException | NoSuchAlgorithmException
 				| NoSuchProviderException | SignatureException e) {
 
@@ -60,7 +60,7 @@ public class GenTestScript {
 		}
 
 		//convert signature to base64
-		String strSig = gsek.convertBytesToBase64(realsig);
+		String strSig = CertToFromByte.convertBytesToBase64(realsig);
 
 		//get certificate in bytes format
 		byte[] certByte;
@@ -72,7 +72,7 @@ public class GenTestScript {
 		}
 
 		//convert cert bytes to base64
-		String strCert = gsek.convertBytesToBase64(certByte);
+		String strCert = CertToFromByte.convertBytesToBase64(certByte);
 
 		//Appending Signature and Certificate
 		try(BufferedWriter brW = new BufferedWriter(new FileWriter(signFile))){
@@ -82,11 +82,18 @@ public class GenTestScript {
 			int c;
 			while((c=br.read())!=-1){
 				brW.append((char)c);
+				System.out.print(c+" ");
 			}
 			
 			br.close();
 
-			//To enter new line after last line of script and bring pointer to next line
+			/* By default, last line in every file is ended by \n which is not visible directly.
+			 * But if generated programmatically, it may not.
+			 * To be sure, two \n characters are added.
+
+			 * Fist to add \n if not already there and second to bring pointer to next line.
+			 * This gives at most two empty lines and at least one empty line.
+			 */
 			brW.append("\n\n");
 
 			String ext = (String)signFile.subSequence(signFile.lastIndexOf(".")+1, signFile.length());
@@ -100,11 +107,12 @@ public class GenTestScript {
 		
 			case "py":
 				begin = "\"\"\"*****BEGIN SIGNSTURE********\n";
-				end = "\n********END SIGNSTURE*****\"\"\"";
+				end = "\n********END SIGNSTURE*****\"\"\"\n";
 				break;
 			}
 
 			brW.append(begin);
+			brW.append("\n");
 			brW.append(strSig);
 			brW.append("\n\n");
 
