@@ -12,10 +12,11 @@
 package org.eclipse.ease.sign;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.rmi.activation.Activator;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
@@ -23,19 +24,21 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.PKIXParameters;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import signature.SignatureInfo;
 
@@ -50,11 +53,11 @@ public class VerifySignature {
 	 * @param location
 	 *            provide location of script to verify
 	 * @throws ScriptSignatureException
-	 *             when signature format is improper or
+	 *             when signature format is improper
 	 */
-	public VerifySignature(final InputStream inputStream) throws ScriptSignatureException {
+	public VerifySignature(final String location) throws ScriptSignatureException {
 
-		SignatureInfo signatureInfo = SignatureHelper.getSignatureInfo(inputStream);
+		SignatureInfo signatureInfo = SignatureHelper.getSignatureInfo(location);
 		if (signatureInfo != null) {
 			fContainSignature = true;
 			fHashAlgorithm = signatureInfo.getMessageDigestAlgo();
@@ -63,7 +66,8 @@ public class VerifySignature {
 			fCertificateChainString = signatureInfo.getCertificateChain();
 			fContent = signatureInfo.getContentOnly();
 
-			if (fSignatureString == null || fProvider == null || fHashAlgorithm == null || fCertificateChainString == null || fContent == null)
+			if (fSignatureString == null || fProvider == null || fHashAlgorithm == null
+					|| fCertificateChainString == null || fContent == null)
 				throw new ScriptSignatureException("Error while parsing script. Try again.");
 
 		} else {
@@ -122,38 +126,38 @@ public class VerifySignature {
 	/**
 	 * Checks whether certificate is self-signed or not.
 	 *
-	 * @return <code>true</code> if certificate is self-signed or <code>false</code> if certificate is CA signed
+	 * @return <code>true</code> if certificate is self-signed or
+	 *         <code>false</code> if certificate is CA signed
 	 * @throws ScriptSignatureException
+	 *             when script does not contain signature or there is an error
+	 *             while retrieving certificate
 	 */
 	public boolean isSelfSignedCertificate() throws ScriptSignatureException {
 		if (fContainSignature) {
 			try {
 				ArrayList<Certificate> certificateList = (ArrayList<Certificate>) getCertificateChain();
 
-				System.out.println(certificateList.get(0).toString());
-				X509Certificate X509Cert = (X509Certificate)certificateList.get(0);
-				System.out.println(X509Cert == null);
+				Certificate cert = certificateList.get(0);
 
-				X509Cert.verify(X509Cert.getPublicKey());
+				cert.verify(cert.getPublicKey());
+
 				return true;
-
 			} catch (CertificateException e) {
-				//	Logger.error(Activator.PLUGIN_ID, "Error while parsing certificate.", e);
+				Logger.error(Activator.PLUGIN_ID, "Error while parsing certificate.", e);
 				throw new ScriptSignatureException("Error while parsing certificate.", e);
 			} catch (InvalidKeyException e) {
-				e.printStackTrace();
-				throw new ScriptSignatureException("Incorrect key.");
+				throw new ScriptSignatureException("Key of the certificate is invalid.", e);
+
 			} catch (NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				throw new ScriptSignatureException("Error while parsing certificate.", e);
+				throw new ScriptSignatureException("No aprovider support this type of algorithm.", e);
+
 			} catch (NoSuchProviderException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				throw new ScriptSignatureException("Error while parsing certificate.", e);
+				throw new ScriptSignatureException("No provider for this certificate.", e);
+
 			} catch (SignatureException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				// private key with which certificate was signed does not
+				// correspond to this public key. Hence it is not self-signed
+				// certificate
 				return false;
 			}
 		}
@@ -161,83 +165,117 @@ public class VerifySignature {
 	}
 
 	/**
-	 * Checks the validity of certificate. If certificate is CA signed, then it checks the validity of CA with trust-store.
+	 * Checks the validity of certificate. If certificate is CA signed, then it
+	 * checks the validity of CA with trust-store.
 	 *
-	 * @return <code>true</code> if certificate is valid and trusted or <code>false</code> if certificate is invalid or not trusted
+	 * @param location
+	 * @param password
+	 * @return <code>true</code> if certificate is valid and trusted or
+	 *         <code>false</code> if certificate is invalid or not trusted
 	 * @throws ScriptSignatureException
 	 */
-	public boolean isCertChainValid() throws ScriptSignatureException {
+	public boolean isCertChainValid(String trustStoreLocation, char[] trustStorePassword)
+			throws ScriptSignatureException {
 
-		// TODO check for validity of certificate and if it is not self-signed check validity of CA
+		if ((trustStoreLocation == null && trustStorePassword != null)
+				|| (trustStoreLocation != null && trustStorePassword == null)) {
+			throw new ScriptSignatureException("Either both or none of the parameters should be null");
+		}
 
 		if (fContainSignature) {
+			InputStream iStream = null;
 			try {
+
+				if (trustStoreLocation == null && trustStorePassword == null) {
+					iStream = new FileInputStream(System.getProperty("java.home") + "/lib/security/" + "cacerts");
+					trustStorePassword = "changeit".toCharArray();
+				} else
+					iStream = ResourceTools.getInputStream(trustStoreLocation);
+
 				CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
 
 				ArrayList<Certificate> certificateList = (ArrayList<Certificate>) getCertificateChain();
 
 				CertPath certPath = certificateFactory.generateCertPath(certificateList);
+
 				CertPathValidator validator = CertPathValidator.getInstance("PKIX");
 
 				KeyStore keystore = KeyStore.getInstance("JKS");
-				// TODO allow keystore from other locations also
-				//				InputStream is = new FileInputStream(System.getProperty("java.home")+"/lib/security/"+"cacerts");
-				InputStream is = Files.newInputStream(Paths.get(System.getProperty("java.home")+"/lib/security/"+"cacerts"));
-				keystore.load(is, "changeit".toCharArray());
-
-				//				Collection<? extends CRL> crls;
-				//				is = Files.newInputStream(Paths.get("crls.p7c"));
-				//				crls = certificateFactory.generateCRLs(is);
+				keystore.load(iStream, trustStorePassword);
 
 				PKIXParameters params = new PKIXParameters(keystore);
-				//				CertStore store = CertStore.getInstance("Collection", new CollectionCertStoreParameters(crls));
-				/*
-				 * If necessary, specify the certificate policy or other requirements with the appropriate params.setXXX() method.
-				 */
-				//				params.addCertStore(store);
-				/* Validate will throw an exception on invalid chains. */
-				PKIXCertPathValidatorResult r = (PKIXCertPathValidatorResult) validator.validate(certPath, params);
+
+				params.setRevocationEnabled(true);
+				Security.setProperty("ocsp.enable", "true");
+				System.setProperty("com.sun.net.ssl.checkRevocation", "true");
+				System.setProperty("com.sun.security.enableCRLDP", "true");
+
+				// Validate will throw an exception on invalid chains.
+				validator.validate(certPath, params);
+
 				return true;
 			} catch (CertificateException e) {
-				throw new ScriptSignatureException("No provider support certifiacte of this type");
+				throw new ScriptSignatureException("One or more certificates can't be loaded.", e);
 
 			} catch (NoSuchAlgorithmException e) {
+				throw new ScriptSignatureException(
+						"Algorithm used for securing keystore can't be found. Chose another Keystore", e);
 
 			} catch (KeyStoreException e) {
-				// TODO handle this exception (but for now, at least know it happened)
-				throw new RuntimeException(e);
-			} catch (IOException e) {
-				// TODO handle this exception (but for now, at least know it happened)
-				throw new RuntimeException(e);
+				throw new ScriptSignatureException("Keystore can't be loaded.");
 
-			}
-			//			catch (CRLException e) {
-			//				// TODO handle this exception (but for now, at least know it happened)
-			//				throw new RuntimeException(e);
-			//
-			//			}
-			catch (InvalidAlgorithmParameterException e) {
-				// TODO handle this exception (but for now, at least know it happened)
-				throw new RuntimeException(e);
+			} catch (IOException e) {
+				if (e.getCause() instanceof UnrecoverableKeyException)
+					throw new ScriptSignatureException("Invalid Keystore Password", e);
+				else if (e.getCause() instanceof FileNotFoundException || e.getCause() instanceof SecurityException)
+					throw new ScriptSignatureException("File can't be read. Chose another keystore or try again.", e);
+
+				Logger.error(Activator.PLUGIN_ID, Arrays.toString(e.getStackTrace()), e);
+				throw new ScriptSignatureException("Error loading keystore. Try again.", e);
+
+			} catch (InvalidAlgorithmParameterException e) {
+				Logger.error(Activator.PLUGIN_ID, Arrays.toString(e.getStackTrace()), e);
+				throw new ScriptSignatureException("Can't perform validation.", e);
 
 			} catch (CertPathValidatorException e) {
-				// TODO handle this exception (but for now, at least know it happened)
-				throw new RuntimeException(e);
+				// if any invalidation occurs, exception will be caught here
+				throw new ScriptSignatureException(e.getMessage());
 
+			} finally {
+				try {
+					if (iStream != null)
+						iStream.close();
+				} catch (IOException e) {
+					Logger.error(Activator.PLUGIN_ID, Arrays.toString(e.getStackTrace()), e);
+				}
 			}
-			return false;
 		}
 		throw new ScriptSignatureException("Script does not contain signature");
 	}
 
 	/**
+	 * Checks the validity of certificate. If certificate is CA signed, then it
+	 * checks the validity of CA with trust-store.
+	 *
+	 * @return <code>true</code> if certificate is valid and trusted or
+	 *         <code>false</code> if certificate is invalid or not trusted
+	 * @throws ScriptSignatureException
+	 */
+	public boolean isCertChainValid() throws ScriptSignatureException {
+
+		return isCertChainValid(null, null);
+	}
+
+	/**
 	 * Verify given signature with provided public key of provided certificate.
 	 *
-	 * @return <code>true</code> if signature is valid or <code>false</code> if signature is invalid
+	 * @return <code>true</code> if signature is valid or <code>false</code> if
+	 *         signature is invalid
 	 * @throws ScriptSignatureException
-	 *             when script does not contain signature or there is an error while retrieving certificate
+	 *             when script does not contain signature or there is an error
+	 *             while retrieving certificate
 	 */
-	public boolean verifySignature() throws ScriptSignatureException {
+	public boolean verify() throws ScriptSignatureException {
 
 		if (fContainSignature) {
 			byte[] signByte = SignatureHelper.convertBase64ToBytes(fSignatureString);
@@ -251,16 +289,18 @@ public class VerifySignature {
 
 				Signature signature = Signature.getInstance(fHashAlgorithm + "with" + encryptionAlgo, fProvider);
 
+				// initialize signature instance with public key
 				signature.initVerify(publicKey);
 
+				// perform verification
 				signature.update(fContent.getBytes());
-
 				boolean verified = signature.verify(signByte);
 
 				return verified;
 
 			} catch (SignatureException e) {
-				//				Logger.error(Activator.PLUGIN_ID, "Signature object not initialized properly or signature is not readable.", e);
+				Logger.error(Activator.PLUGIN_ID,
+						"Signature object not initialized properly or signature is not readable.", e);
 				throw new ScriptSignatureException("Signature is not readable.", e);
 
 			} catch (NoSuchAlgorithmException e) {
