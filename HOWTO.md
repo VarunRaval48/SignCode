@@ -1,6 +1,6 @@
 # How to use keytool utility for key management
 
-**To generate a new private key with alias and store it in file keystore.store**
+**To generate a new private key with alias and store it in file KEYSTORE_NAME**
 > keytool -genkey -alias MYALIAS -keystore KEYSTORE_NAME
 
 **Generate a temporary certificate file**
